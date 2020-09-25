@@ -1,5 +1,3 @@
-import matching
-
 # TODO: get data from airtable
 #   TODO: marshal data to internal format
 #   TODO: verify data integrity: 
@@ -9,7 +7,7 @@ import matching
 
 ### Dummy data
 preferences = { "A" : ["Z", "B"], 
-                "B" : ["Z", "A"], 
+                "B" : ["Z", "C"], 
                 "C" : ["A", "B"], 
                 #"X" : ["A", "B"], 
                 #"Y" : ["A", "B"], 
@@ -34,13 +32,9 @@ rounds = 2
 # Start with
 #for p in pref_list:
 
-pairings = gen_pairings(preferences, {})
-
-print pairings
-
 # Returns tuple of (number_of_matches (weight), pairings e.g. ("A", "B"))
 def gen_pairings(preferences, match_history): # e.g. { "A" : {"B", "C"}}
-    unmatched_users = preferences.keys()
+    unmatched_users = set(preferences.keys())
     all_users = preferences.keys()
 
     # randomize unmatched_keys?
@@ -50,11 +44,18 @@ def gen_pairings(preferences, match_history): # e.g. { "A" : {"B", "C"}}
 
     # Find some actual pairings
     for user in all_users:
+        if user not in unmatched_users:
+            continue
+
         for maybe_match in preferences[user]:
+            if maybe_match not in unmatched_users:
+                continue
             if(user in preferences[maybe_match] and have_never_matched(user, maybe_match, match_history)):
-                record_pairing(u1, u2, match_history)
-                unmatched_users.remove(user, maybe_match)
+                record_pairing(user, maybe_match, match_history)
+                unmatched_users.remove(user)
+                unmatched_users.remove(maybe_match)
                 pairings.append((user, maybe_match))
+                num_matches += 1
                 break;
 
     # Pair the unmatched users
@@ -63,13 +64,20 @@ def gen_pairings(preferences, match_history): # e.g. { "A" : {"B", "C"}}
     return (num_matches, pairings)
 
 def have_never_matched(u1, u2, match_history):
+    if u1 not in match_history or u2 not in match_history:
+        return True 
     return (u2 not in match_history[u1]) and (u1 not in match_history[u2])
-    # TODO
 
 def record_pairing(u1, u2, match_history):
-    match_history[u1].add(u2) # TODO: do I need to initialize the set? 
-    match_history[u2].add(u1)
-    # TODO
+    try:
+        match_history[u1].add(u2) # TODO: do I need to initialize the set? 
+    except KeyError:
+        match_history[u1] = {u2}
+
+    try:
+        match_history[u2].add(u1) # TODO: do I need to initialize the set? 
+    except KeyError:
+        match_history[u2] = {u1}
 
 
 # Keep track of the solution list with the highest match weight (also keep track of the weight)
@@ -79,3 +87,7 @@ def record_pairing(u1, u2, match_history):
 # e.g. [[("A","B"), ...], ...]
 
 # TODO: Submit results back to airtable 
+
+
+pairings = gen_pairings(preferences, {})
+print(pairings)
